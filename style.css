@@ -31,7 +31,8 @@ button, input, select{font-family:inherit;}
 
 /* Marquee-glow focus state used everywhere for 10-foot navigation */
 button:focus-visible, input:focus-visible, select:focus-visible,
-.card:focus-visible, .scrub-track:focus-visible, .chip:focus-visible{
+.card:focus-visible, .scrub-track:focus-visible, .chip:focus-visible,
+.custom-select-list li:focus-visible{
   box-shadow: var(--focus-ring);
   border-color: var(--amber) !important;
 }
@@ -60,10 +61,31 @@ button:focus-visible, input:focus-visible, select:focus-visible,
 #searchInput::placeholder{color:var(--text-muted);}
 
 .topbar-actions{display:flex; align-items:center; gap:14px;}
-#sortSelect{
+
+/* Dropdown de orden propio (no <select> nativo): así el look y la navegación con
+   el mando de la TV son consistentes con el resto de la UI, en vez de depender del
+   picker nativo del navegador/plataforma. */
+.custom-select{position:relative;}
+.custom-select-btn{
   background:var(--bg-raised); color:var(--text); border:2px solid transparent;
-  border-radius:10px; padding:10px 14px; font-size:.95rem;
+  border-radius:10px; padding:10px 14px; font-size:.95rem; min-width:230px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
 }
+.custom-select-btn .chevron{flex-shrink:0; transition:transform .2s ease; color:var(--text-muted);}
+.custom-select-btn[aria-expanded="true"] .chevron{transform:rotate(180deg);}
+.custom-select-list{
+  position:absolute; top:calc(100% + 8px); left:0; min-width:100%; z-index:50;
+  list-style:none; margin:0; padding:6px; max-height:320px; overflow-y:auto;
+  background:var(--bg-raised); border-radius:12px; border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 12px 32px rgba(0,0,0,.55);
+}
+.custom-select-list li{
+  padding:11px 14px; border-radius:8px; cursor:pointer; font-size:.95rem;
+  color:var(--text); white-space:nowrap;
+}
+.custom-select-list li:hover{background:rgba(255,255,255,.1);}
+.custom-select-list li:focus-visible{background:rgba(255,255,255,.1);}
+.custom-select-list li[aria-selected="true"]{color:var(--amber); font-weight:600;}
 
 .btn{
   border:2px solid transparent; border-radius:10px; padding:11px 20px;

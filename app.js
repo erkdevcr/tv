@@ -30,7 +30,6 @@ let currentSort = "recent";
 let filterFavoritesOnly = false;
 let searchTerm = "";
 let activeVideoId = null;
-let pendingDeleteId = null;
 let controlsHideTimer = null;
 
 // ---------- Persistencia ----------
@@ -243,6 +242,72 @@ function showToast(msg, ms = 2200) {
 }
 
 // ============================================================
+// DROPDOWN DE ORDEN (propio, no <select> nativo)
+// ============================================================
+// El <select> nativo del navegador abre un picker del sistema operativo/plataforma que
+// no se puede estilizar y, en varias TVs, no navega bien con el mando (flechas/OK).
+// Este dropdown propio es solo botones y una lista, así que se comporta igual que el
+// resto de la UI con el control remoto: flechas arriba/abajo mueven el foco, OK/Enter
+// selecciona, Atrás/Escape cierra.
+function initSortDropdown() {
+  const btn = document.getElementById("sortSelectBtn");
+  const list = document.getElementById("sortSelectList");
+  const label = document.getElementById("sortSelectLabel");
+  const items = Array.from(list.querySelectorAll("li"));
+
+  function openList() {
+    list.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    const current = items.find(i => i.dataset.value === currentSort) || items[0];
+    current.focus();
+  }
+  function closeList(returnFocus = true) {
+    list.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+    if (returnFocus) btn.focus();
+  }
+  function selectValue(value) {
+    currentSort = value;
+    const opt = items.find(i => i.dataset.value === value);
+    label.textContent = opt ? opt.textContent : "";
+    items.forEach(i => i.setAttribute("aria-selected", String(i.dataset.value === value)));
+    renderLibrary();
+  }
+
+  btn.addEventListener("click", () => {
+    if (list.hidden) openList(); else closeList(false);
+  });
+  btn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+      e.preventDefault();
+      openList();
+    }
+  });
+
+  items.forEach((item, idx) => {
+    item.addEventListener("click", () => { selectValue(item.dataset.value); closeList(); });
+    item.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "Enter":
+        case " ":
+          e.preventDefault(); selectValue(item.dataset.value); closeList(); break;
+        case "ArrowDown":
+          e.preventDefault(); (items[idx + 1] || items[0]).focus(); break;
+        case "ArrowUp":
+          e.preventDefault(); (items[idx - 1] || items[items.length - 1]).focus(); break;
+        case "Escape":
+        case "Backspace":
+          e.preventDefault(); closeList(); break;
+      }
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!list.hidden && !btn.contains(e.target) && !list.contains(e.target)) closeList(false);
+  });
+}
+
+// ============================================================
 // RENDER DE LA BIBLIOTECA
 // ============================================================
 function getFilteredSorted() {
@@ -312,10 +377,6 @@ function buildCard(video) {
     e.stopPropagation();
     toggleFavorite(video.id);
   });
-  node.querySelector(".del-btn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    requestDelete(video.id);
-  });
 
   return node;
 }
@@ -329,6 +390,19 @@ function timeAgo(ts) {
   if (hrs < 24) return `hace ${hrs} h`;
   const days = Math.floor(hrs / 24);
   return `hace ${days} d`;
+}
+
+// Botón "Biblioteca": limpia búsqueda y filtro de favoritos, y vuelve a la vista completa.
+// Pensado para navegación con el mando de la TV: siempre queda un botón fijo y visible
+// que regresa a un estado conocido, sin depender de borrar texto del buscador con teclas.
+function goToLibrary() {
+  filterFavoritesOnly = false;
+  searchTerm = "";
+  const searchInput = document.getElementById("searchInput");
+  searchInput.value = "";
+  document.getElementById("filterFavBtn").setAttribute("aria-pressed", "false");
+  renderLibrary();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function renderLibrary() {
@@ -386,21 +460,6 @@ function toggleFavorite(id) {
   renderLibrary();
   if (activeVideoId === id) syncPlayerFavIcon();
   showToast(v.favorite ? "Agregado a favoritos" : "Quitado de favoritos");
-}
-
-function requestDelete(id) {
-  pendingDeleteId = id;
-  document.getElementById("confirmModal").hidden = false;
-  document.getElementById("confirmDeleteBtn").focus();
-}
-
-function performDelete() {
-  library = library.filter(x => x.id !== pendingDeleteId);
-  saveLibrary();
-  renderLibrary();
-  pendingDeleteId = null;
-  document.getElementById("confirmModal").hidden = true;
-  showToast("Video eliminado de la videoteca");
 }
 
 // ============================================================
@@ -745,25 +804,17 @@ document.getElementById("cancelModalBtn").addEventListener("click", closeAddModa
 document.getElementById("saveVideoBtn").addEventListener("click", saveNewVideo);
 document.getElementById("inputLink").addEventListener("input", handleLinkInput);
 
-document.getElementById("confirmCancelBtn").addEventListener("click", () => {
-  pendingDeleteId = null;
-  document.getElementById("confirmModal").hidden = true;
-});
-document.getElementById("confirmDeleteBtn").addEventListener("click", performDelete);
-
 document.getElementById("searchInput").addEventListener("input", (e) => {
   searchTerm = e.target.value;
   renderLibrary();
 });
-document.getElementById("sortSelect").addEventListener("change", (e) => {
-  currentSort = e.target.value;
-  renderLibrary();
-});
+initSortDropdown();
 document.getElementById("filterFavBtn").addEventListener("click", (e) => {
   filterFavoritesOnly = !filterFavoritesOnly;
   e.currentTarget.setAttribute("aria-pressed", String(filterFavoritesOnly));
   renderLibrary();
 });
+document.getElementById("libraryBtn").addEventListener("click", goToLibrary);
 
 document.getElementById("backBtn").addEventListener("click", closePlayer);
 document.getElementById("errorBackBtn").addEventListener("click", closePlayer);
@@ -796,13 +847,11 @@ document.getElementById("playerView").addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   const playerOpen = !document.getElementById("playerView").hidden;
   const modalOpen = !document.getElementById("addModal").hidden ||
-    !document.getElementById("confirmModal").hidden ||
     !document.getElementById("sourcesModal").hidden;
 
   if (modalOpen) {
     if (e.key === "Escape") {
       document.getElementById("addModal").hidden = true;
-      document.getElementById("confirmModal").hidden = true;
       document.getElementById("sourcesModal").hidden = true;
     }
     return;
