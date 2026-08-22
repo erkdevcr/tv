@@ -38,29 +38,35 @@ button:focus-visible, input:focus-visible, select:focus-visible,
 }
 
 /* ============ TOPBAR ============ */
+/* Todo en una sola fila siempre: nunca debe pasarse a una segunda línea. Si el ancho
+   no alcanza ni reduciendo tamaños, el buscador se encoge al mínimo y, como último
+   recurso, la barra permite scroll horizontal en vez de partirse en dos filas. */
 .topbar{
-  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  display:flex; align-items:center; gap:16px; flex-wrap:nowrap;
   padding: 18px 32px 14px;
   position:sticky; top:0; z-index:20;
   background: linear-gradient(180deg, rgba(20,17,15,1) 60%, rgba(20,17,15,0));
+  overflow-x:auto; overflow-y:hidden;
+  scrollbar-width:none; -ms-overflow-style:none;
 }
-.brand{display:flex; align-items:center; gap:8px;}
+.topbar::-webkit-scrollbar{display:none;}
+.brand{display:flex; align-items:center; gap:8px; flex-shrink:0;}
 .brand-dot{width:10px;height:10px;border-radius:50%;background:var(--amber); box-shadow:0 0 12px var(--amber);}
-.brand h1{font-size:1.5rem; color:var(--amber);}
+.brand h1{font-size:1.5rem; color:var(--amber); white-space:nowrap;}
 
 .search-wrap{
-  flex:1 1 200px; max-width:360px; display:flex; align-items:center; gap:8px;
+  flex:1 1 120px; min-width:44px; max-width:360px; display:flex; align-items:center; gap:8px;
   background: var(--bg-raised); border:2px solid transparent; border-radius:999px;
   padding:8px 14px; color:var(--text-muted);
 }
 .search-wrap:focus-within{border-color:var(--amber); box-shadow:var(--focus-ring);}
 .search-icon{flex-shrink:0;}
 #searchInput{
-  background:transparent; border:none; color:var(--text); font-size:.9rem; width:100%;
+  background:transparent; border:none; color:var(--text); font-size:.9rem; width:100%; min-width:0;
 }
 #searchInput::placeholder{color:var(--text-muted);}
 
-.topbar-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.topbar-actions{display:flex; align-items:center; gap:8px; flex-wrap:nowrap; flex-shrink:0;}
 
 /* Dropdown de orden propio (no <select> nativo): así el look y la navegación con
    el mando de la TV son consistentes con el resto de la UI, en vez de depender del
@@ -288,18 +294,20 @@ main{padding: 8px 32px 80px;}
   .card-grid{grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap:14px;}
 }
 
-/* Anchos chicos (celulares, ventanas angostas): los botones del header quedan solo
-   con su ícono (sin el texto) para que quepan sin desbordar ni amontonarse. */
-@media (max-width: 640px){
+/* Anchos chicos/medianos: los botones del header quedan solo con su ícono (sin texto)
+   para que quepan en una sola fila sin necesitar scroll horizontal en la mayoría de casos. */
+@media (max-width: 860px){
   .btn-label{display:none;}
   .btn-label-plus{display:inline;}
   .btn{padding:9px 11px;}
   .custom-select-btn{min-width:0;}
-  .search-wrap{flex-basis:140px;}
   .brand h1{font-size:1.2rem;}
 }
-@media (min-width: 641px){
+@media (min-width: 861px){
   .btn-label-plus{display:none;}
+}
+@media (max-width: 640px){
+  .search-wrap{flex-basis:100px;}
 }
 
 @media (max-width: 720px){
