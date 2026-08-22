@@ -632,19 +632,48 @@ function openPlayer(id) {
 
   videoEl.load();
   videoEl.play().catch(() => {/* el usuario deberá darle play manualmente en algunos TVs */});
+  requestPlayerFullscreen();
 
   showControls();
 }
 
-// Modo "reproductor de Drive": los controles propios (play/pausa, avance, progreso,
-// velocidad) no aplican porque el iframe de Drive trae los suyos. En este modo el overlay
-// deja de capturar clics (para no tapar los controles del iframe) y no se auto-oculta,
-// dejando solo el back/favorito de arriba siempre accesibles.
+// Pantalla completa al abrir un video: se pide sobre todo el contenedor del reproductor
+// (no solo el <video>) para que cubra igual el modo nativo y el iframe de Drive.
+// Requiere gesto del usuario (el clic en la tarjeta lo es), por eso se llama aquí mismo.
+function requestPlayerFullscreen() {
+  const el = document.getElementById("playerView");
+  const request = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (!request) return;
+  try {
+    const result = request.call(el);
+    if (result && typeof result.catch === "function") {
+      result.catch(() => {/* algunas plataformas de TV no lo permiten */});
+    }
+  } catch (e) { /* algunas plataformas de TV no lo permiten */ }
+}
+
+function exitPlayerFullscreen() {
+  const inFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+  if (!inFullscreen) return;
+  const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (!exit) return;
+  try {
+    const result = exit.call(document);
+    if (result && typeof result.catch === "function") result.catch(() => {});
+  } catch (e) { /* ignore */ }
+}
+
+// Modo "reproductor de Drive": el iframe de Drive trae sus propios controles
+// (play/pausa, avance, progreso, velocidad) y su propia lógica de mostrar/ocultarlos.
+// La app no debe superponer nada encima ni decidir cuándo ocultarse — se quita
+// por completo el overlay propio y se le deja todo el manejo al iframe.
+// Para volver a la videoteca sigue funcionando el botón "Atrás"/Escape del control
+// remoto (manejado a nivel de teclado, sin depender de un botón visible en pantalla).
 let fallbackModeActive = false;
 function setFallbackMode(active) {
   fallbackModeActive = active;
   const overlay = document.getElementById("playerOverlay");
-  overlay.classList.toggle("fallback-mode", active);
+  overlay.hidden = active;
   clearTimeout(controlsHideTimer);
   overlay.classList.remove("hidden-controls");
 }
@@ -668,8 +697,20 @@ function closePlayer() {
   activeVideoId = null;
   clearInterval(saveProgressTimer);
   setFallbackMode(false);
+  exitPlayerFullscreen();
   renderLibrary();
 }
+
+// Si el usuario sale de pantalla completa por otro medio (control remoto de la TV,
+// gesto del sistema, etc.) en vez de usar el botón/tecla de la app, se cierra el
+// reproductor igual para no dejarlo "a medias" con el overlay o el video de fondo.
+["fullscreenchange", "webkitfullscreenchange", "msfullscreenchange"].forEach(evt => {
+  document.addEventListener(evt, () => {
+    const inFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+    const playerOpen = !document.getElementById("playerView").hidden;
+    if (!inFullscreen && playerOpen) closePlayer();
+  });
+});
 
 function useFallbackPlayer() {
   const v = library.find(x => x.id === activeVideoId);
@@ -781,7 +822,7 @@ function showControls() {
   overlay.classList.remove("hidden-controls");
   controlsVisible = true;
   clearTimeout(controlsHideTimer);
-  if (fallbackModeActive) return; // en modo Drive el back/favorito siempre quedan visibles
+  if (fallbackModeActive) return; // en modo Drive el overlay propio está oculto, no aplica
   controlsHideTimer = setTimeout(() => {
     overlay.classList.add("hidden-controls");
     controlsVisible = false;
