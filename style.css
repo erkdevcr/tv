@@ -81,7 +81,7 @@ button:focus-visible, input:focus-visible, select:focus-visible,
 .custom-select-btn .chevron{transition:transform .2s ease;}
 .custom-select-btn[aria-expanded="true"] .chevron{transform:rotate(180deg);}
 .custom-select-list{
-  position:absolute; top:calc(100% + 8px); left:0; min-width:100%; z-index:50;
+  position:fixed; min-width:190px; z-index:500;
   list-style:none; margin:0; padding:6px; max-height:320px; overflow-y:auto;
   background:var(--bg-raised); border-radius:12px; border:1px solid rgba(255,255,255,.08);
   box-shadow:0 12px 32px rgba(0,0,0,.55);
@@ -218,6 +218,14 @@ main{padding: 8px 32px 80px;}
 }
 #videoEl, #fallbackFrame{width:100%; height:100%; object-fit:contain; background:#000; border:none;}
 
+/* Bloqueador del botón "Abrir en Drive" del iframe de Drive: como el iframe es de otro
+   origen no se puede tocar su contenido, así que se tapa esa esquina con una capa
+   transparente que intercepta el clic antes de que llegue al botón real. */
+.drive-btn-blocker{
+  position:absolute; top:0; right:0; width:120px; height:64px; z-index:5;
+  background:transparent; cursor:default;
+}
+
 .player-overlay{
   position:absolute; inset:0; display:flex; flex-direction:column; justify-content:space-between;
   padding: 32px 48px; background:linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 65%, rgba(0,0,0,.75) 100%);
@@ -240,11 +248,18 @@ main{padding: 8px 32px 80px;}
 
 .gain-control{position:relative;}
 .icon-btn.sm{width:38px; height:38px;}
+.icon-btn.sm.dark{background:rgba(0,0,0,.25); color:var(--text);}
+.icon-btn.sm.dark:hover{background:rgba(0,0,0,.4);}
+/* position:fixed (no absolute) para que el panel nunca quede recortado por el
+   overflow-x:auto del topbar ni por ningún otro contenedor con overflow oculto;
+   su top/left exacto se calcula en JS según el botón que lo abrió. */
 .gain-panel{
-  position:absolute; top:calc(100% + 10px); right:0; z-index:30;
+  position:fixed; z-index:500;
   background:#221c17; border:1px solid rgba(255,255,255,.12); border-radius:14px;
   padding:14px 16px; width:220px; box-shadow:0 8px 24px rgba(0,0,0,.4);
 }
+.btn-icon-only{padding:9px 11px;}
+.btn-icon-only .btn-label, .btn-icon-only .btn-label-plus{display:none;}
 .gain-panel-title{font-size:.85rem; color:var(--text); margin:0 0 10px; font-weight:600;}
 .gain-row{display:flex; align-items:center; justify-content:center; gap:14px;}
 .gain-value{font-variant-numeric:tabular-nums; font-size:1.1rem; min-width:56px; text-align:center; color:var(--amber);}

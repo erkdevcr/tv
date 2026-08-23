@@ -256,7 +256,16 @@ function initSortDropdown() {
   const label = document.getElementById("sortSelectLabel");
   const items = Array.from(list.querySelectorAll("li"));
 
+  function positionList() {
+    // La lista es position:fixed (para no quedar recortada por el overflow-x:auto
+    // del topbar), así que su posición se calcula en JS según dónde está el botón.
+    const rect = btn.getBoundingClientRect();
+    list.style.top = `${rect.bottom + 8}px`;
+    list.style.left = `${rect.left}px`;
+    list.style.minWidth = `${rect.width}px`;
+  }
   function openList() {
+    positionList();
     list.hidden = false;
     btn.setAttribute("aria-expanded", "true");
     const current = items.find(i => i.dataset.value === currentSort) || items[0];
@@ -305,6 +314,9 @@ function initSortDropdown() {
 
   document.addEventListener("click", (e) => {
     if (!list.hidden && !btn.contains(e.target) && !list.contains(e.target)) closeList(false);
+  });
+  window.addEventListener("resize", () => {
+    if (!list.hidden) closeList(false);
   });
 }
 
@@ -679,6 +691,8 @@ function setFallbackMode(active) {
   overlay.hidden = active;
   clearTimeout(controlsHideTimer);
   overlay.classList.remove("hidden-controls");
+  const blocker = document.getElementById("driveBtnBlocker");
+  if (blocker) blocker.hidden = !active;
 }
 
 function updatePlayCountLabel(v) {
@@ -752,9 +766,16 @@ function applyGain() {
   }
 }
 
+// Puede haber más de un control de ganancia visible a la vez (el del home,
+// junto a "Agregar video", y el del reproductor, junto a Favorito). Todos
+// comparten el mismo valor guardado, así que se registran aquí para
+// actualizarlos y abrirlos/cerrarlos en conjunto.
+const gainPanelInstances = [];
+
 function updateGainLabel() {
-  const label = document.getElementById("gainValueLabel");
-  if (label) label.textContent = `${currentGainDB > 0 ? "+" : ""}${currentGainDB} dB`;
+  document.querySelectorAll(".gain-value").forEach(label => {
+    label.textContent = `${currentGainDB > 0 ? "+" : ""}${currentGainDB} dB`;
+  });
 }
 
 function changeGain(delta) {
@@ -764,26 +785,43 @@ function changeGain(delta) {
   applyGain();
 }
 
-function toggleGainPanel(forceState) {
-  const panel = document.getElementById("gainPanel");
-  const btn = document.getElementById("gainBtn");
-  if (!panel || !btn) return;
+function positionGainPanel(panel, btn) {
+  // El panel es position:fixed (para no quedar recortado por overflow-x:auto
+  // del topbar u otros contenedores), así que su posición se calcula en JS.
+  const rect = btn.getBoundingClientRect();
+  panel.style.top = `${rect.bottom + 10}px`;
+  const left = Math.min(rect.right - 220, window.innerWidth - 232);
+  panel.style.left = `${Math.max(12, left)}px`;
+}
+
+function closeAllGainPanels(except) {
+  gainPanelInstances.forEach(({ panel, btn }) => {
+    if (panel === except) return;
+    panel.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  });
+}
+
+function toggleGainPanelInstance(panel, btn, forceState) {
   const open = forceState !== undefined ? forceState : panel.hidden;
+  closeAllGainPanels(open ? panel : null);
+  if (open) positionGainPanel(panel, btn);
   panel.hidden = !open;
   btn.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
-function initGainControls() {
-  updateGainLabel();
-  const gainBtn = document.getElementById("gainBtn");
-  const upBtn = document.getElementById("gainUpBtn");
-  const downBtn = document.getElementById("gainDownBtn");
-  const wrap = document.getElementById("gainControlWrap");
-  if (!gainBtn || !upBtn || !downBtn || !wrap) return;
+function setupGainInstance(btnId, panelId, upId, downId) {
+  const btn = document.getElementById(btnId);
+  const panel = document.getElementById(panelId);
+  const upBtn = document.getElementById(upId);
+  const downBtn = document.getElementById(downId);
+  if (!btn || !panel || !upBtn || !downBtn) return;
 
-  gainBtn.addEventListener("click", (e) => {
+  gainPanelInstances.push({ btn, panel });
+
+  btn.addEventListener("click", (e) => {
     e.stopPropagation();
-    toggleGainPanel();
+    toggleGainPanelInstance(panel, btn);
   });
   upBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -793,12 +831,21 @@ function initGainControls() {
     e.stopPropagation();
     changeGain(-1);
   });
+}
+
+function initGainControls() {
+  updateGainLabel();
+  setupGainInstance("gainBtnHome", "gainPanelHome", "gainUpBtnHome", "gainDownBtnHome");
+  setupGainInstance("gainBtn", "gainPanel", "gainUpBtn", "gainDownBtn");
+
   document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target)) toggleGainPanel(false);
+    const insideAny = gainPanelInstances.some(({ panel, btn }) => panel.contains(e.target) || btn.contains(e.target));
+    if (!insideAny) closeAllGainPanels(null);
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" || e.key === "Backspace") toggleGainPanel(false);
+    if (e.key === "Escape" || e.key === "Backspace") closeAllGainPanels(null);
   });
+  window.addEventListener("resize", () => closeAllGainPanels(null));
 }
 
 // Si el usuario sale de pantalla completa por otro medio (control remoto de la TV,
