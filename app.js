@@ -7,6 +7,7 @@ const STORAGE_KEY = "sala_videoteca_v1";
 const SOURCES_KEY = "sala_sources_v1";
 const SOURCES_SEEDED_KEY = "sala_sources_seeded_v1";
 const APIKEY_KEY = "sala_apikey_v1";
+const GAIN_KEY = "sala_gain_db_v1";
 
 // Fuente por defecto: se precarga una única vez en el primer arranque de la app
 // (si el usuario la borra, no vuelve a aparecer sola).
@@ -633,6 +634,8 @@ function openPlayer(id) {
   videoEl.load();
   videoEl.play().catch(() => {/* el usuario deberá darle play manualmente en algunos TVs */});
   requestPlayerFullscreen();
+  ensureAudioGraph();
+  applyGain();
 
   showControls();
 }
@@ -699,6 +702,103 @@ function closePlayer() {
   setFallbackMode(false);
   exitPlayerFullscreen();
   renderLibrary();
+}
+
+// ============================================================
+// GANANCIA DE AUDIO (botón de engranaje)
+// El <video> nativo no puede pasar de 100% de volumen, así que se usa
+// Web Audio API para amplificar de verdad. Solo aplica al reproductor
+// propio: en modo Drive (iframe) el overlay ya está oculto y este botón
+// nunca se muestra, así que no hace falta excluirlo aparte.
+// ============================================================
+let audioCtx = null;
+let gainNode = null;
+let mediaSourceNode = null; // createMediaElementSource solo puede llamarse UNA vez por <video>
+
+function loadGainDB() {
+  const raw = localStorage.getItem(GAIN_KEY);
+  const n = raw !== null ? parseInt(raw, 10) : 0;
+  return Number.isFinite(n) ? Math.min(12, Math.max(-12, n)) : 0;
+}
+
+function saveGainDB(db) {
+  localStorage.setItem(GAIN_KEY, String(db));
+}
+
+let currentGainDB = loadGainDB();
+
+function dbToLinear(db) {
+  return Math.pow(10, db / 20);
+}
+
+function ensureAudioGraph() {
+  if (mediaSourceNode) return; // ya conectado a este <video>, no repetir
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    audioCtx = new AudioCtx();
+    mediaSourceNode = audioCtx.createMediaElementSource(videoEl);
+    gainNode = audioCtx.createGain();
+    mediaSourceNode.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+  } catch (e) { /* algunos navegadores de TV no soportan Web Audio API */ }
+}
+
+function applyGain() {
+  if (!gainNode) return;
+  gainNode.gain.value = dbToLinear(currentGainDB);
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+}
+
+function updateGainLabel() {
+  const label = document.getElementById("gainValueLabel");
+  if (label) label.textContent = `${currentGainDB > 0 ? "+" : ""}${currentGainDB} dB`;
+}
+
+function changeGain(delta) {
+  currentGainDB = Math.min(12, Math.max(-12, currentGainDB + delta));
+  saveGainDB(currentGainDB);
+  updateGainLabel();
+  applyGain();
+}
+
+function toggleGainPanel(forceState) {
+  const panel = document.getElementById("gainPanel");
+  const btn = document.getElementById("gainBtn");
+  if (!panel || !btn) return;
+  const open = forceState !== undefined ? forceState : panel.hidden;
+  panel.hidden = !open;
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function initGainControls() {
+  updateGainLabel();
+  const gainBtn = document.getElementById("gainBtn");
+  const upBtn = document.getElementById("gainUpBtn");
+  const downBtn = document.getElementById("gainDownBtn");
+  const wrap = document.getElementById("gainControlWrap");
+  if (!gainBtn || !upBtn || !downBtn || !wrap) return;
+
+  gainBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleGainPanel();
+  });
+  upBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    changeGain(1);
+  });
+  downBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    changeGain(-1);
+  });
+  document.addEventListener("click", (e) => {
+    if (!wrap.contains(e.target)) toggleGainPanel(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.key === "Backspace") toggleGainPanel(false);
+  });
 }
 
 // Si el usuario sale de pantalla completa por otro medio (control remoto de la TV,
@@ -850,6 +950,7 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
   renderLibrary();
 });
 initSortDropdown();
+initGainControls();
 document.getElementById("filterFavBtn").addEventListener("click", (e) => {
   filterFavoritesOnly = !filterFavoritesOnly;
   e.currentTarget.setAttribute("aria-pressed", String(filterFavoritesOnly));

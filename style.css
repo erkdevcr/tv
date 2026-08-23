@@ -238,6 +238,18 @@ main{padding: 8px 32px 80px;}
 .icon-btn:hover{background:rgba(255,255,255,.18);}
 #favBtnPlayer.active{color:var(--amber);}
 
+.gain-control{position:relative;}
+.icon-btn.sm{width:38px; height:38px;}
+.gain-panel{
+  position:absolute; top:calc(100% + 10px); right:0; z-index:30;
+  background:#221c17; border:1px solid rgba(255,255,255,.12); border-radius:14px;
+  padding:14px 16px; width:220px; box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.gain-panel-title{font-size:.85rem; color:var(--text); margin:0 0 10px; font-weight:600;}
+.gain-row{display:flex; align-items:center; justify-content:center; gap:14px;}
+.gain-value{font-variant-numeric:tabular-nums; font-size:1.1rem; min-width:56px; text-align:center; color:var(--amber);}
+.gain-hint{font-size:.7rem; color:var(--text-muted); margin:10px 0 0; line-height:1.3;}
+
 .player-center{display:flex; align-items:center; justify-content:center; gap:56px;}
 .icon-btn.big{width:64px; height:64px;}
 .icon-btn.xbig{width:88px; height:88px; background:var(--amber); color:#1a1305;}
