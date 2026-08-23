@@ -898,6 +898,18 @@ videoEl.addEventListener("error", () => {
 videoEl.addEventListener("play", () => setPlayIcon(true));
 videoEl.addEventListener("pause", () => setPlayIcon(false));
 
+// Si el video se queda sin buffer a mitad de la reproducción, algunos navegadores
+// (sobre todo en TV) muestran su propio ícono nativo de carga justo encima del
+// video, en el mismo punto donde está nuestro botón grande de play/pausa. Para
+// que nunca se vean pegados/superpuestos, ocultamos nuestro ícono mientras dura
+// el "waiting" y lo devolvemos apenas retoma la reproducción.
+videoEl.addEventListener("waiting", () => {
+  document.getElementById("playPauseBtn").classList.add("buffering");
+});
+videoEl.addEventListener("playing", () => {
+  document.getElementById("playPauseBtn").classList.remove("buffering");
+});
+
 videoEl.addEventListener("timeupdate", updateScrubUI);
 
 videoEl.addEventListener("ended", () => {

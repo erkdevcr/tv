@@ -235,7 +235,7 @@ main{padding: 8px 32px 80px;}
 }
 
 .player-overlay{
-  position:absolute; inset:0; display:flex; flex-direction:column; justify-content:space-between;
+  position:absolute; inset:0; z-index:10; display:flex; flex-direction:column; justify-content:space-between;
   padding: 32px 48px; background:linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 65%, rgba(0,0,0,.75) 100%);
   transition: opacity .35s ease;
 }
@@ -301,14 +301,22 @@ main{padding: 8px 32px 80px;}
 .chip.active{background:var(--amber); color:#1a1305; font-weight:700;}
 
 .player-loading{
-  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  position:absolute; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
   color:var(--text-muted); background:#000;
 }
 .spinner{width:44px; height:44px; border-radius:50%; border:4px solid rgba(232,163,61,.2); border-top-color:var(--amber); animation:spin 1s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
+/* Mientras el <video> está re-cargando datos a medio playback, algunos navegadores
+   (sobre todo en TV) dibujan su propio ícono nativo de "buffering" encima del video,
+   justo en el mismo punto central donde vive nuestro botón grande de pausa/play.
+   Para que nunca se vean los dos superpuestos, nuestro ícono se oculta mientras dura
+   ese estado y vuelve a aparecer apenas el video retoma la reproducción normal.
+   Ver eventos "waiting"/"playing" del <video> en app.js. */
+.icon-btn.xbig.buffering{visibility:hidden;}
+
 .player-error{
-  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  position:absolute; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
   text-align:center; padding:40px; background:rgba(0,0,0,.92);
 }
 .player-error p{max-width:520px; color:var(--text-muted);}
