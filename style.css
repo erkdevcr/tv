@@ -18,12 +18,20 @@
    (que fijan display:flex directamente) le ganan a la regla por defecto del navegador
    [hidden]{display:none}, y el elemento queda visible aunque tenga hidden puesto. */
 [hidden]{display:none !important;}
-html,body{margin:0;padding:0;height:100%;}
+/* Importante para que el header sticky no falle: el body NO debe fijar
+   height:100% + overflow-x:hidden a la vez, porque eso obliga al navegador a
+   tratar el body como su propio contenedor de scroll (overflow-y pasa a
+   'auto' automáticamente) además del scroll normal del documento. Con dos
+   contextos de scroll anidados, algunos navegadores de TV pierden el
+   position:sticky y el header se esconde al hacer scroll. Con un solo
+   contexto de scroll (el documento) el sticky es confiable siempre. */
+html{overflow-x:hidden;}
+html,body{margin:0;padding:0;}
 body{
   background: var(--bg);
   color: var(--text);
   font-family: 'Inter', system-ui, sans-serif;
-  overflow-x:hidden;
+  min-height:100%;
 }
 h1,h2{font-family:'Bebas Neue', 'Inter', sans-serif; letter-spacing:.03em; margin:0;}
 button, input, select{font-family:inherit;}
@@ -45,7 +53,7 @@ button:focus-visible, input:focus-visible, select:focus-visible,
   display:flex; align-items:center; gap:16px; flex-wrap:nowrap;
   padding: 18px 32px 14px;
   position:sticky; top:0; z-index:20;
-  background: linear-gradient(180deg, rgba(20,17,15,1) 60%, rgba(20,17,15,0));
+  background: var(--bg);
   overflow-x:auto; overflow-y:hidden;
   scrollbar-width:none; -ms-overflow-style:none;
 }
