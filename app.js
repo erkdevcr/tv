@@ -729,10 +729,15 @@ let audioCtx = null;
 let gainNode = null;
 let mediaSourceNode = null; // createMediaElementSource solo puede llamarse UNA vez por <video>
 
+// Por defecto se sube +6 dB (los videos se oían bajos); si el usuario ya guardó
+// un valor propio (incluido 0), ese tiene prioridad y se respeta siempre.
+const DEFAULT_GAIN_DB = 6;
+
 function loadGainDB() {
   const raw = localStorage.getItem(GAIN_KEY);
-  const n = raw !== null ? parseInt(raw, 10) : 0;
-  return Number.isFinite(n) ? Math.min(12, Math.max(-12, n)) : 0;
+  if (raw === null) return DEFAULT_GAIN_DB;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? Math.min(12, Math.max(-12, n)) : DEFAULT_GAIN_DB;
 }
 
 function saveGainDB(db) {
