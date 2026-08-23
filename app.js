@@ -691,8 +691,6 @@ function setFallbackMode(active) {
   overlay.hidden = active;
   clearTimeout(controlsHideTimer);
   overlay.classList.remove("hidden-controls");
-  const blocker = document.getElementById("driveBtnBlocker");
-  if (blocker) blocker.hidden = !active;
 }
 
 function updatePlayCountLabel(v) {
